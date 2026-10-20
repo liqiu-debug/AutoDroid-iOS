@@ -1,0 +1,41 @@
+// !$*UTF8*$!
+{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+615A47495CFFC6E99CD3B069 = {isa = PBXFileReference; path = "Sources/Core/Clients.swift"; sourceTree = "<group>"; lastKnownFileType = sourcecode.swift;};
+92649D8CFFE7FEFD1077805D = {isa = PBXBuildFile; fileRef = 615A47495CFFC6E99CD3B069;};
+70BEC17F0F384BD20938EDEE = {isa = PBXFileReference; path = "Sources/Core/Models.swift"; sourceTree = "<group>"; lastKnownFileType = sourcecode.swift;};
+381224D2CA98676A3A6C1CE6 = {isa = PBXBuildFile; fileRef = 70BEC17F0F384BD20938EDEE;};
+54380238BF576194C4592475 = {isa = PBXFileReference; path = "Sources/Core/ScriptPreview.swift"; sourceTree = "<group>"; lastKnownFileType = sourcecode.swift;};
+A28F9580300CF47890831444 = {isa = PBXBuildFile; fileRef = 54380238BF576194C4592475;};
+F9D1CC06F88C05C89CA84E3C = {isa = PBXFileReference; path = "App/AppModel.swift"; sourceTree = "<group>"; lastKnownFileType = sourcecode.swift;};
+6647B957C0BCE26BFBFC83FE = {isa = PBXBuildFile; fileRef = F9D1CC06F88C05C89CA84E3C;};
+2F20F56AF5F003D62B344B9E = {isa = PBXFileReference; path = "App/AutoDroidApp.swift"; sourceTree = "<group>"; lastKnownFileType = sourcecode.swift;};
+D7012495EDF8AC42121CFE86 = {isa = PBXBuildFile; fileRef = 2F20F56AF5F003D62B344B9E;};
+949AF894A86BB14385B88146 = {isa = PBXFileReference; path = "App/CompletionNotifications.swift"; sourceTree = "<group>"; lastKnownFileType = sourcecode.swift;};
+7A6089348B47D79FE0F1E29A = {isa = PBXBuildFile; fileRef = 949AF894A86BB14385B88146;};
+5892E6C7461DAC123F4B5A44 = {isa = PBXFileReference; path = "App/FeatureViews.swift"; sourceTree = "<group>"; lastKnownFileType = sourcecode.swift;};
+747F0F66AB6D188EEDAE2F33 = {isa = PBXBuildFile; fileRef = 5892E6C7461DAC123F4B5A44;};
+32C3C38E7D3BA2F2BCB4A8C4 = {isa = PBXFileReference; path = "App/ScriptPreviewView.swift"; sourceTree = "<group>"; lastKnownFileType = sourcecode.swift;};
+581E5FB4793C616B51732A06 = {isa = PBXBuildFile; fileRef = 32C3C38E7D3BA2F2BCB4A8C4;};
+18655DB5C7FFC1F7492F810C = {isa = PBXFileReference; path = "App/Storage.swift"; sourceTree = "<group>"; lastKnownFileType = sourcecode.swift;};
+B8630527C16815C23535B85B = {isa = PBXBuildFile; fileRef = 18655DB5C7FFC1F7492F810C;};
+13298D477C6F9E11F20F3F07 = {isa = PBXFileReference; path = "App/Views.swift"; sourceTree = "<group>"; lastKnownFileType = sourcecode.swift;};
+ADF2E24C67C9766A2B9DBE64 = {isa = PBXBuildFile; fileRef = 13298D477C6F9E11F20F3F07;};
+0DED1DD5DF66B4C53B1DF40E = {isa = PBXFileReference; path = "Resources/selftest.json"; sourceTree = "<group>"; lastKnownFileType = text.json;};
+4FFF85E035F5E4B1EDBFFA17 = {isa = PBXBuildFile; fileRef = 0DED1DD5DF66B4C53B1DF40E;};
+4545F5318A0046043187F2EB = {isa = PBXFileReference; path = "Resources/Assets.xcassets"; sourceTree = "<group>"; lastKnownFileType = folder.assetcatalog;};
+627BBC9C62B0C159B656E415 = {isa = PBXBuildFile; fileRef = 4545F5318A0046043187F2EB;};
+38A007151ABE87CC01A5B6E9 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = AutoDroid.app; sourceTree = BUILT_PRODUCTS_DIR;};
+FBDC4F23F93125BBEEAE800C = {isa = PBXGroup; children = (38A007151ABE87CC01A5B6E9,); name = Products; sourceTree = "<group>";};
+64292B1C2B2E13EAD8788FC8 = {isa = PBXGroup; children = (615A47495CFFC6E99CD3B069,70BEC17F0F384BD20938EDEE,54380238BF576194C4592475,F9D1CC06F88C05C89CA84E3C,2F20F56AF5F003D62B344B9E,949AF894A86BB14385B88146,5892E6C7461DAC123F4B5A44,32C3C38E7D3BA2F2BCB4A8C4,18655DB5C7FFC1F7492F810C,13298D477C6F9E11F20F3F07,0DED1DD5DF66B4C53B1DF40E,4545F5318A0046043187F2EB,FBDC4F23F93125BBEEAE800C,); sourceTree = "<group>";};
+BCE16DD0260827ECF338C787 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (92649D8CFFE7FEFD1077805D,381224D2CA98676A3A6C1CE6,A28F9580300CF47890831444,6647B957C0BCE26BFBFC83FE,D7012495EDF8AC42121CFE86,7A6089348B47D79FE0F1E29A,747F0F66AB6D188EEDAE2F33,581E5FB4793C616B51732A06,B8630527C16815C23535B85B,ADF2E24C67C9766A2B9DBE64,); runOnlyForDeploymentPostprocessing = 0;};
+0189424A5A60FED329FA868E = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (4FFF85E035F5E4B1EDBFFA17,627BBC9C62B0C159B656E415,); runOnlyForDeploymentPostprocessing = 0;};
+7561BFB015D8F536760CB671 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;};
+A5A76368A6E498576C4EEF98 = {isa = XCBuildConfiguration; name = Debug; buildSettings = {SDKROOT = "iphoneos"; IPHONEOS_DEPLOYMENT_TARGET = "17.0"; CLANG_ENABLE_MODULES = "YES"; SWIFT_VERSION = "5.0"; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; DEBUG_INFORMATION_FORMAT = "dwarf"; ENABLE_USER_SCRIPT_SANDBOXING = "YES"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG";};};
+FAA7255682251B39E2A9E0EE = {isa = XCBuildConfiguration; name = Debug; buildSettings = {PRODUCT_NAME = "AutoDroid"; PRODUCT_BUNDLE_IDENTIFIER = "com.liuzhenyu.autodroid.ios"; INFOPLIST_FILE = "Resources/Info.plist"; CODE_SIGN_STYLE = "Automatic"; DEVELOPMENT_TEAM = "2YQY9YF8B8"; TARGETED_DEVICE_FAMILY = "1,2"; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon"; GENERATE_INFOPLIST_FILE = "NO"; SWIFT_EMIT_LOC_STRINGS = "YES";};};
+A5BD66D3C03A0FAF1A0386D5 = {isa = XCBuildConfiguration; name = Release; buildSettings = {SDKROOT = "iphoneos"; IPHONEOS_DEPLOYMENT_TARGET = "17.0"; CLANG_ENABLE_MODULES = "YES"; SWIFT_VERSION = "5.0"; SWIFT_OPTIMIZATION_LEVEL = "-O"; DEBUG_INFORMATION_FORMAT = "dwarf"; ENABLE_USER_SCRIPT_SANDBOXING = "YES";};};
+68120FA0DEBB83CCC432450D = {isa = XCBuildConfiguration; name = Release; buildSettings = {PRODUCT_NAME = "AutoDroid"; PRODUCT_BUNDLE_IDENTIFIER = "com.liuzhenyu.autodroid.ios"; INFOPLIST_FILE = "Resources/Info.plist"; CODE_SIGN_STYLE = "Automatic"; DEVELOPMENT_TEAM = "2YQY9YF8B8"; TARGETED_DEVICE_FAMILY = "1,2"; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon"; GENERATE_INFOPLIST_FILE = "NO"; SWIFT_EMIT_LOC_STRINGS = "YES";};};
+5FB66943637FEB59E5652D81 = {isa = XCConfigurationList; buildConfigurations = (A5A76368A6E498576C4EEF98,A5BD66D3C03A0FAF1A0386D5,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
+C57128001CE614BF8549D6BB = {isa = XCConfigurationList; buildConfigurations = (FAA7255682251B39E2A9E0EE,68120FA0DEBB83CCC432450D,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
+0E8A3AD980EC179856012B7E = {isa = PBXNativeTarget; name = AutoDroid; productName = AutoDroid; productType = "com.apple.product-type.application"; productReference = 38A007151ABE87CC01A5B6E9; buildConfigurationList = C57128001CE614BF8549D6BB; buildPhases = (BCE16DD0260827ECF338C787,7561BFB015D8F536760CB671,0189424A5A60FED329FA868E,); buildRules = (); dependencies = ();};
+98F54143AB4E86B28C3AFEE0 = {isa = PBXProject; attributes = {LastUpgradeCheck = 1600; TargetAttributes = {0E8A3AD980EC179856012B7E = {ProvisioningStyle = Automatic;};};}; buildConfigurationList = 5FB66943637FEB59E5652D81; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; knownRegions = (en, Base, "zh-Hans"); mainGroup = 64292B1C2B2E13EAD8788FC8; productRefGroup = FBDC4F23F93125BBEEAE800C; projectDirPath = ""; projectRoot = ""; targets = (0E8A3AD980EC179856012B7E,);};
+}; rootObject = 98F54143AB4E86B28C3AFEE0; }
