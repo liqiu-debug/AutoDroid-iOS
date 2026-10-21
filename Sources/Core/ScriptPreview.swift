@@ -37,8 +37,13 @@ struct PreviewStep: Decodable, Identifiable {
         case "click", "wait_until_exists": return locator
         case "input":
             return [locator, (argument("value") ?? value).map { "输入：\($0)" } ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
-        case "assert_text": return argument("expected_text").map { "包含「\($0)」" } ?? ""
-        case "assert_image", "click_image": return argument("image").map { "模板：\($0)" } ?? ""
+        case "assert_text":
+            let mode = argument("match_mode") == "not_contains" ? "不包含" : "包含"
+            return argument("expected_text").map { "\(mode)「\($0)」" } ?? ""
+        case "assert_image":
+            let mode = argument("match_mode") == "not_exists" ? "不存在" : "存在"
+            return argument("image").map { "\(mode) · 模板：\($0)" } ?? ""
+        case "click_image": return argument("image").map { "模板：\($0)" } ?? ""
         case "extract_by_ocr": return [argument("region").map { "区域：\($0)" }, argument("output_var").map { "保存到：\($0)" }].compactMap { $0 }.joined(separator: " · ")
         case "sleep": return argument("seconds").map { "\($0) 秒" } ?? ""
         case "swipe": return argument("direction") ?? ""

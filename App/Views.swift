@@ -49,6 +49,9 @@ struct LibraryView: View {
     @State private var loading = false
     @State private var folders: [FolderChoice] = []
     @State private var folderID: Int?
+    @State private var loadID = UUID()
+    @State private var loadedQuery = ""
+    @State private var loadedFolderID: Int?
     var body: some View {
         NavigationStack {
             List {
@@ -78,8 +81,11 @@ struct LibraryView: View {
                 }
             }
             .navigationTitle(kind.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .contentMargins(.top, 8, for: .scrollContent)
             .searchable(text: $keyword, prompt: "搜索名称")
             .onSubmit(of: .search) { Task { await load(reset: true) } }
+            .onChange(of: keyword) { _, value in if value.isEmpty { Task { await load(reset: true) } } }
             .onChange(of: folderID) { _, _ in Task { await load(reset: true) } }
             .refreshable { await load(reset: true) }
             .task { await load(reset: true) }
@@ -90,10 +96,16 @@ struct LibraryView: View {
         }
     }
     func load(reset: Bool) async {
-        guard !loading else { return }; loading = true; defer { loading = false }
-        await model.perform {
-            if reset { folders = try await model.folders(kind) }
-            let page = try await model.targets(kind, skip: reset ? 0 : items.count, keyword: keyword, folderID: folderID)
+        guard reset || !loading else { return }
+        let id = UUID(); loadID = id; loading = true
+        let query = reset ? keyword : loadedQuery, folder = reset ? folderID : loadedFolderID, skip = reset ? 0 : items.count
+        defer { if loadID == id { loading = false } }
+        await model.read {
+            let choices = reset ? try await model.folders(kind) : folders
+            let page = try await model.targets(kind, skip: skip, keyword: query, folderID: folder)
+            guard loadID == id, !Task.isCancelled else { return }
+            folders = choices
+            loadedQuery = query; loadedFolderID = folder
             items = reset ? page.items : items + page.items; total = page.total
         }
     }
@@ -131,7 +143,7 @@ struct LoginView: View {
                 }
                 Button { Task { await model.login() } } label: {
                     HStack { Spacer(); if model.busy { ProgressView() }; Text("连接平台").fontWeight(.semibold); Spacer() }.padding(.vertical, 10)
-                }.buttonStyle(.borderedProminent).disabled(model.busy).accessibilityIdentifier("login")
+                }.buttonStyle(.borderedProminent).disabled(model.busy || model.clearingSession).accessibilityIdentifier("login")
                 Text("登录后即可使用全部功能。密码不会保存，登录令牌保存在系统钥匙串中。")
                     .font(.footnote).foregroundStyle(.secondary)
             }.padding(24)
@@ -213,6 +225,8 @@ struct SettingsView: View {
                 }
                 Section { LabeledContent("版本", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—") }
             }.navigationTitle("设置")
+                .navigationBarTitleDisplayMode(.inline)
+                .contentMargins(.top, 8, for: .scrollContent)
                 .confirmationDialog("运行本机自检？", isPresented: $smoke, titleVisibility: .visible) {
                     Button("开始自检") { Task { await model.selftest() } }
                 } message: { Text("将打开系统设置、截图识别并滑动，最后返回桌面。结果只保存在本机。") }

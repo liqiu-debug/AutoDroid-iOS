@@ -9,6 +9,9 @@ struct ReportsView: View {
     @State private var keyword = ""
     @State private var status = ""
     @State private var loading = false
+    @State private var loadID = UUID()
+    @State private var loadedQuery = ""
+    @State private var loadedStatus = ""
     var body: some View {
         NavigationStack {
             List {
@@ -52,11 +55,14 @@ struct ReportsView: View {
                     }
                 }
             }.navigationTitle("报告")
+                .navigationBarTitleDisplayMode(.inline)
+                .contentMargins(.top, 8, for: .scrollContent)
                 .navigationDestination(isPresented: Binding(get: { model.notificationRunID != nil }, set: { if !$0 { model.notificationRunID = nil } })) {
                     if let id = model.notificationRunID { RunDetailView(id: id) }
                 }
                 .searchable(text: $keyword, prompt: "搜索平台报告")
                 .onSubmit(of: .search) { Task { await load(reset: true) } }
+                .onChange(of: keyword) { _, value in if value.isEmpty { Task { await load(reset: true) } } }
                 .onChange(of: status) { _, _ in Task { await load(reset: true) } }
                 .task { local = model.hasPendingRun; await load(reset: true) }
                 .onChange(of: model.hasPendingRun) { _, active in if active { local = true } }
@@ -65,9 +71,14 @@ struct ReportsView: View {
         }
     }
     func load(reset: Bool) async {
-        guard !loading else { return }; loading = true; defer { loading = false }
-        await model.perform {
-            let page = try await model.reportPage(skip: reset ? 0 : items.count, keyword: keyword, status: status)
+        guard reset || !loading else { return }
+        let id = UUID(); loadID = id; loading = true
+        let query = reset ? keyword : loadedQuery, filter = reset ? status : loadedStatus, skip = reset ? 0 : items.count
+        defer { if loadID == id { loading = false } }
+        await model.read {
+            let page = try await model.reportPage(skip: skip, keyword: query, status: filter)
+            guard loadID == id, !Task.isCancelled else { return }
+            loadedQuery = query; loadedStatus = filter
             items = reset ? page.items : items + page.items; total = page.total
         }
     }
@@ -85,7 +96,7 @@ struct PlatformReportView: View {
             else { ProgressView("加载报告…") }
         }.navigationTitle(item.scenario_name).navigationBarTitleDisplayMode(.inline)
             .task {
-                await model.perform {
+                await model.read {
                     do { html = try await model.reportHTML(item.id) }
                     catch { failure = error.localizedDescription; throw error }
                 }
@@ -132,6 +143,8 @@ struct SchedulesView: View {
                         .swipeActions { Button("删除", role: .destructive) { Task { await model.saveSchedule(item, delete: true) } } }
                 }
             }.navigationTitle("定时")
+                .navigationBarTitleDisplayMode(.inline)
+                .contentMargins(.top, 8, for: .scrollContent)
                 .toolbar { Button { var item = LocalSchedule(); item.notify = model.feishu; editing = item } label: { Image(systemName: "plus") }.accessibilityLabel("添加定时任务") }
                 .refreshable { await model.refresh() }
                 .sheet(item: $editing) { item in ScheduleEditor(item: item) }
@@ -197,20 +210,32 @@ struct TargetPicker: View {
     @State private var keyword = ""
     @State private var folders: [FolderChoice] = []
     @State private var folderID: Int?
+    @State private var loading = false
+    @State private var loadID = UUID()
+    @State private var loadedQuery = ""
+    @State private var loadedFolderID: Int?
     var body: some View {
         List {
             FolderFilter(kind: kind, folders: folders, selection: $folderID)
             ForEach(items) { item in Button(item.name) { select(item); dismiss() } }
-            if items.count < total { Button("加载更多") { Task { await load(reset: false) } } }
+            if items.count < total { Button("加载更多") { Task { await load(reset: false) } }.disabled(loading) }
         }.navigationTitle("选择\(kind.title)").searchable(text: $keyword)
             .task { await load(reset: true) }
             .onSubmit(of: .search) { Task { await load(reset: true) } }
+            .onChange(of: keyword) { _, value in if value.isEmpty { Task { await load(reset: true) } } }
             .onChange(of: folderID) { _, _ in Task { await load(reset: true) } }
     }
     func load(reset: Bool) async {
-        await model.perform {
-            if reset { folders = try await model.folders(kind) }
-            let page = try await model.targets(kind, skip: reset ? 0 : items.count, keyword: keyword, folderID: folderID)
+        guard reset || !loading else { return }
+        let id = UUID(); loadID = id; loading = true
+        let query = reset ? keyword : loadedQuery, folder = reset ? folderID : loadedFolderID, skip = reset ? 0 : items.count
+        defer { if loadID == id { loading = false } }
+        await model.read {
+            let choices = reset ? try await model.folders(kind) : folders
+            let page = try await model.targets(kind, skip: skip, keyword: query, folderID: folder)
+            guard loadID == id, !Task.isCancelled else { return }
+            folders = choices
+            loadedQuery = query; loadedFolderID = folder
             items = reset ? page.items : items + page.items; total = page.total
         }
     }

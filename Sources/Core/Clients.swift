@@ -25,6 +25,9 @@ struct HTTPClient {
     let session: URLSession
     init(session: URLSession = .shared) { self.session = session }
     func send<T: Decodable>(_ request: URLRequest, as: T.Type = T.self) async throws -> T {
+        try JSONDecoder().decode(T.self, from: await data(request))
+    }
+    func data(_ request: URLRequest) async throws -> Data {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw ClientError(message: "服务器未返回 HTTP 响应。") }
         let json = try? JSONDecoder().decode(JSONValue.self, from: data)
@@ -48,7 +51,7 @@ struct HTTPClient {
         if let error = json?["value"]["error"].string {
             throw ClientError(message: json?["value"]["message"].string ?? error)
         }
-        return try JSONDecoder().decode(T.self, from: data)
+        return data
     }
 }
 
@@ -105,10 +108,7 @@ struct PlatformClient {
         ]))
     }
     func reportHTML(_ id: Int) async throws -> String {
-        let (data, response) = try await http.session.data(for: request("reports/executions/\(id)/download"))
-        guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
-            throw ClientError(message: "报告加载失败，请刷新或重新登录。")
-        }
+        let data = try await http.data(request("reports/executions/\(id)/download"))
         return String(decoding: data, as: UTF8.self)
     }
 }

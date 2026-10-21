@@ -313,4 +313,23 @@ final class ClientTests: XCTestCase {
         let page = try await platform.executions(skip: 0, keyword: "", status: "")
         XCTAssertNil(page.items.first?.duration)
     }
+
+    func testReportDownloadKeepsAuthenticationErrorsForSessionRecovery() async throws {
+        var platform = PlatformClient(server: try ServerAddress("http://test/prefix"), token: "expired")
+        platform.http = http { request in
+            XCTAssertEqual(request.url?.path, "/prefix/api/reports/executions/7/download")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer expired")
+            return (401, #"{"detail":"Token expired"}"#)
+        }
+        do { _ = try await platform.reportHTML(7); XCTFail("Expired report requests must invalidate the session") }
+        catch let error as ClientError { XCTAssertEqual(error.statusCode, 401) }
+    }
+
+    func testReportDownloadPreservesHTMLWithoutJSONDecoding() async throws {
+        let html = "<!doctype html><html><body>执行报告：通过</body></html>"
+        var platform = PlatformClient(server: try ServerAddress("http://test"), token: "token")
+        platform.http = http { _ in (200, html) }
+        let result = try await platform.reportHTML(7)
+        XCTAssertEqual(result, html)
+    }
 }

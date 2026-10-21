@@ -8,6 +8,7 @@ final class AppModel: ObservableObject {
     @Published var password = ""
     @Published private(set) var loggedIn = false
     @Published private(set) var restoringSession = false
+    @Published private(set) var clearingSession = false
     @Published var tab = 0
     @Published var notificationRunID: String?
     @Published var environmentText = ""
@@ -49,13 +50,13 @@ final class AppModel: ObservableObject {
         do {
             schedules = try storage.read("schedules.json", as: [LocalSchedule].self) ?? []
             runs = try storage.read("runs.json", as: [RunRecord].self) ?? []
-            activeRunID = runs.first(where: { !$0.finished })?.id
         } catch { self.error = "读取本地记录失败：\(error.localizedDescription)" }
         if let address = try? ServerAddress(serverText) {
             server = address.root.absoluteString
             account = username.trimmingCharacters(in: .whitespacesAndNewlines)
             token = SessionVault.read("\(server)|\(account)") ?? ""
             restoringSession = !token.isEmpty
+            restoreActiveRun()
         }
         CompletionNotifications.shared.onOpen = { [weak self] id in
             guard let self, self.loggedIn, self.scopedRuns.contains(where: { $0.id == id }) else { return }
@@ -70,17 +71,36 @@ final class AppModel: ObservableObject {
         guard loggedIn else { throw ClientError(message: "请先登录平台。") }
         return PlatformClient(server: try ServerAddress(server), token: token)
     }
+    private func restoreActiveRun() {
+        activeRunID = scopedRuns.first(where: { !$0.finished })?.id
+    }
+    private func handleFailure(_ error: Error, attemptedToken: String) async {
+        guard !(error is CancellationError), (error as? URLError)?.code != .cancelled,
+              attemptedToken == token else { return }
+        if (error as? ClientError)?.statusCode == 401 {
+            clearingSession = true
+            invalidateSession()
+            _ = try? await executor.schedules(.object(["items": .array([])]))
+            clearingSession = false
+        }
+        self.error = error.localizedDescription
+    }
+    // Page reads have their own loading state. They must not be discarded just
+    // because a different tab or an execution is already using the platform.
+    func read(_ work: () async throws -> Void) async {
+        let attemptedToken = token
+        do { try await work() }
+        catch { await handleFailure(error, attemptedToken: attemptedToken) }
+    }
     func perform(_ work: () async throws -> Void) async {
         guard !busy else { return }; busy = true; defer { busy = false }
+        let attemptedToken = token
         do { try await work() } catch {
-            if (error as? ClientError)?.statusCode == 401 {
-                _ = try? await executor.schedules(.object(["items": .array([])]))
-                invalidateSession()
-            }
-            self.error = error.localizedDescription
+            await handleFailure(error, attemptedToken: attemptedToken)
         }
     }
     func login() async {
+        guard !clearingSession else { return }
         await perform {
             let address = try ServerAddress(serverText)
             let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -90,6 +110,7 @@ final class AppModel: ObservableObject {
             try SessionVault.save(response.access_token, account: "\(address.root.absoluteString)|\(user)")
             server = address.root.absoluteString; account = user; token = response.access_token
             serverText = server; username = user; password = ""; loggedIn = true
+            restoreActiveRun()
             UserDefaults.standard.set(server, forKey: "server"); UserDefaults.standard.set(user, forKey: "username")
             lastHeartbeat = .distantPast; schedulesSynced = false; tab = 0
         }
@@ -98,6 +119,7 @@ final class AppModel: ObservableObject {
     private func invalidateSession() {
         SessionVault.remove("\(server)|\(account)"); token = ""; password = ""; loggedIn = false
         tab = 0; schedulesSynced = false; restoringSession = false
+        activeRunID = nil; notificationRunID = nil
     }
     func logout() async {
         guard !loggingOut else { return }
@@ -250,6 +272,7 @@ final class AppModel: ObservableObject {
         }
         let heartbeatState = executorReady ? (executorRunning ? "RUNNING" : "READY") : "NOT_READY"
         if loggedIn && !loggingOut && (Date().timeIntervalSince(lastHeartbeat) > 60 || heartbeatState != lastHeartbeatState) {
+            let attemptedToken = token
             lastHeartbeat = Date()
             lastHeartbeatState = heartbeatState
             do {
@@ -266,8 +289,7 @@ final class AppModel: ObservableObject {
             } catch {
                 deviceText = "平台暂不可达或登录过期"
                 if (error as? ClientError)?.statusCode == 401 {
-                    _ = try? await executor.schedules(.object(["items": .array([])]))
-                    invalidateSession()
+                    await handleFailure(error, attemptedToken: attemptedToken)
                 }
             }
         }
@@ -327,12 +349,10 @@ final class AppModel: ObservableObject {
     }
     func folders(_ kind: ScriptKind) async throws -> [FolderChoice] { try await client().folders(kind) }
     func preview(_ kind: ScriptKind, id: Int) async throws -> ScriptPreview {
+        let attemptedToken = token
         do { return try await client().preview(kind, id: id) }
         catch {
-            if (error as? ClientError)?.statusCode == 401 {
-                _ = try? await executor.schedules(.object(["items": .array([])]))
-                invalidateSession()
-            }
+            await handleFailure(error, attemptedToken: attemptedToken)
             throw error
         }
     }
