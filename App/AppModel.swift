@@ -3,6 +3,15 @@ import UIKit
 
 @MainActor
 final class AppModel: ObservableObject {
+    /// 机型标识（如 iPhone15,2）：UIDevice.model 只会是 "iPhone"，平台侧按标识翻译市场名
+    static func machineProductType() -> String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        return withUnsafePointer(to: &systemInfo.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: 1) { String(cString: $0) }
+        }
+    }
+
     @Published var serverText: String
     @Published var username: String
     @Published var password = ""
@@ -278,8 +287,10 @@ final class AppModel: ObservableObject {
             do {
                 let bounds = UIScreen.main.nativeBounds
                 let payload: JSONValue = .object([
-                    "platform": .string("ios"), "udid": .string(deviceID), "name": .string("AutoDroid · \(UIDevice.current.model)"),
-                    "model": .string(UIDevice.current.model), "brand": .string("Apple"), "os_version": .string(UIDevice.current.systemVersion),
+                    // model 上报机型标识（iPhone15,2），平台按标识翻译市场名；
+                    // 不再自动写 name：旧版的「AutoDroid · iPhone」会一直占着 custom_name，盖住型号
+                    "platform": .string("ios"), "udid": .string(deviceID),
+                    "model": .string(AppModel.machineProductType()), "brand": .string("Apple"), "os_version": .string(UIDevice.current.systemVersion),
                     "resolution": .string("\(Int(bounds.width))x\(Int(bounds.height))"),
                     "executor_status": .string(heartbeatState)
                 ])
