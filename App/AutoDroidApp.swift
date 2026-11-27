@@ -12,7 +12,7 @@ struct AutoDroidApp: App {
                     guard phase == .active else { return }
                     while !Task.isCancelled {
                         await model.refresh()
-                        try? await Task.sleep(for: .seconds(3))
+                        try? await Task.sleep(for: .seconds(model.pollingIntervalSeconds))
                     }
                 }
         }

@@ -332,4 +332,38 @@ final class ClientTests: XCTestCase {
         let result = try await platform.reportHTML(7)
         XCTAssertEqual(result, html)
     }
+
+    func testRunHistoryPolicyTrimCapsCompletedRunsWhileKeepingActiveAndPendingUpload() {
+        let now = Date()
+        let active = RunRecord(id: "active", name: "运行中", startedAt: now, server: "https://s", username: "u", state: "执行中", finished: false)
+        var pendingUpload = RunRecord(id: "pending", name: "待补传", startedAt: now, server: "https://s", username: "u", state: "执行成功", result: .object(["success": .bool(true)]), finished: true)
+        pendingUpload.report = .object(["run_id": .string("pending")])
+
+        var records: [RunRecord] = [active, pendingUpload]
+        for i in 1...60 {
+            records.append(RunRecord(
+                id: "done-\(i)",
+                name: "历史-\(i)",
+                startedAt: now,
+                server: "https://s",
+                username: "u",
+                state: "执行成功",
+                result: .object(["upload_ok": .bool(true)]),
+                finished: true
+            ))
+        }
+
+        let trimmed = RunHistoryPolicy.trim(records, maxCount: 5, server: "https://s", username: "u")
+        XCTAssertEqual(trimmed.count, 7)
+        XCTAssertEqual(trimmed.first?.id, "active")
+        XCTAssertTrue(trimmed.contains(where: { $0.id == "pending" }))
+        XCTAssertEqual(trimmed.filter { $0.id.hasPrefix("done-") }.map(\.id), ["done-1", "done-2", "done-3", "done-4", "done-5"])
+    }
+
+    func testPollingIntervalUsesFastRateWhenActiveAndSlowRateWhenIdle() {
+        XCTAssertEqual(RunHistoryPolicy.pollingIntervalSeconds(hasPendingRun: true, executorRunning: false, restoringSession: false), 3)
+        XCTAssertEqual(RunHistoryPolicy.pollingIntervalSeconds(hasPendingRun: false, executorRunning: true, restoringSession: false), 3)
+        XCTAssertEqual(RunHistoryPolicy.pollingIntervalSeconds(hasPendingRun: false, executorRunning: false, restoringSession: true), 3)
+        XCTAssertEqual(RunHistoryPolicy.pollingIntervalSeconds(hasPendingRun: false, executorRunning: false, restoringSession: false), 15)
+    }
 }

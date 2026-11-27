@@ -75,6 +75,9 @@ final class AppModel: ObservableObject {
     var scopedSchedules: [LocalSchedule] { schedules.filter { $0.server == server && $0.username == account } }
     var scopedRuns: [RunRecord] { runs.filter { $0.server == server && $0.username == account || $0.server.isEmpty } }
     var hasPendingRun: Bool { activeRunID != nil }
+    var pollingIntervalSeconds: Int {
+        RunHistoryPolicy.pollingIntervalSeconds(hasPendingRun: hasPendingRun, executorRunning: executorRunning, restoringSession: restoringSession)
+    }
     var platformLabel: String { server.isEmpty ? "尚未登录平台" : server }
     private func client() throws -> PlatformClient {
         guard loggedIn else { throw ClientError(message: "请先登录平台。") }
@@ -184,6 +187,7 @@ final class AppModel: ObservableObject {
         record.notifyOnCompletion = systemNotify
         // Persist before POST so an app suspension or response timeout cannot lose the run ID.
         var updated = runs; updated.insert(record, at: 0)
+        updated = RunHistoryPolicy.trim(updated, server: server, username: account)
         try storage.write(updated, name: "runs.json"); runs = updated; activeRunID = id; tab = 2
         let payload: JSONValue = .object([
             "bundle": bundle, "run_id": .string(id), "platform": .string("ios"),
@@ -205,13 +209,23 @@ final class AppModel: ObservableObject {
         }
         await refresh()
     }
-    private func updateRun(_ id: String, state: String, logs: [String]? = nil, result: JSONValue? = nil, finished: Bool = false) {
+    @discardableResult
+    private func trimRunsIfNeeded() -> Bool {
+        let trimmed = RunHistoryPolicy.trim(runs, server: server, username: account)
+        guard trimmed.count != runs.count else { return false }
+        runs = trimmed
+        return true
+    }
+    private func updateRun(_ id: String, state: String, logs: [String]? = nil, result: JSONValue? = nil, finished: Bool = false, persist: Bool = true) {
         guard let index = runs.firstIndex(where: { $0.id == id }) else { return }
         runs[index].state = state
         if let logs { runs[index].logs = logs }
         if let result { runs[index].result = result }
         runs[index].finished = finished
-        do { try storage.write(runs, name: "runs.json") } catch { self.error = "保存运行记录失败：\(error.localizedDescription)" }
+        trimRunsIfNeeded()
+        if persist {
+            do { try storage.write(runs, name: "runs.json") } catch { self.error = "保存运行记录失败：\(error.localizedDescription)" }
+        }
     }
     func refresh() async {
         guard !loggingOut else { return }
@@ -415,11 +429,23 @@ final class AppModel: ObservableObject {
             let state = try await executor.schedules()
             guard !changingSchedules, loggedIn else { return }
             let instance = state["instance"].string ?? ""
+            var schedulesDirty = false
+            var runsDirty = false
             // Read back next occurrences before resyncing, so a completed once-only task is not replayed.
             for remote in state["items"].array {
                 if let i = schedules.firstIndex(where: { $0.id == remote["id"].string && $0.server == server && $0.username == account }) {
-                    schedules[i].enabled = remote["enabled"].bool ?? schedules[i].enabled
-                    if let next = remote["next_run"].number { schedules[i].nextRun = Date(timeIntervalSince1970: next) }
+                    let nextEnabled = remote["enabled"].bool ?? schedules[i].enabled
+                    if schedules[i].enabled != nextEnabled {
+                        schedules[i].enabled = nextEnabled
+                        schedulesDirty = true
+                    }
+                    if let next = remote["next_run"].number {
+                        let nextDate = Date(timeIntervalSince1970: next)
+                        if schedules[i].nextRun != nextDate {
+                            schedules[i].nextRun = nextDate
+                            schedulesDirty = true
+                        }
+                    }
                 }
             }
             for event in state["events"].array where event["server"].string == server && event["username"].string == account {
@@ -428,18 +454,21 @@ final class AppModel: ObservableObject {
                     var record = RunRecord(id: id, name: event["name"].string ?? "定时任务", startedAt: Date(timeIntervalSince1970: event["started_at"].number ?? Date().timeIntervalSince1970), server: server, username: account, state: "执行中")
                     record.notifyOnCompletion = event["notify_app"].bool ?? false
                     runs.insert(record, at: 0)
+                    runsDirty = true
                 }
                 if event["finished"].bool == true {
                     if let index = runs.firstIndex(where: { $0.id == id }), !runs[index].finished {
                         runs[index].report = try? await executor.report(runID: id)
                         let result = event["result"]
-                        updateRun(id, state: result["success"].bool == true ? "执行成功" : "执行失败", logs: event["logs"].array.compactMap(\.string), result: result, finished: true)
+                        updateRun(id, state: result["success"].bool == true ? "执行成功" : "执行失败", logs: event["logs"].array.compactMap(\.string), result: result, finished: true, persist: false)
+                        runsDirty = true
                         if activeRunID == id { activeRunID = nil }
                     }
                 }
             }
-            try storage.write(schedules, name: "schedules.json")
-            try storage.write(runs, name: "runs.json")
+            if trimRunsIfNeeded() { runsDirty = true }
+            if schedulesDirty { try storage.write(schedules, name: "schedules.json") }
+            if runsDirty { try storage.write(runs, name: "runs.json") }
             if !schedulesSynced || schedulerInstance != instance {
                 // An interrupted executor cannot catch up by replaying old UI operations.
                 for i in schedules.indices where schedules[i].enabled && (schedules[i].nextRun ?? .distantPast) < Date() {

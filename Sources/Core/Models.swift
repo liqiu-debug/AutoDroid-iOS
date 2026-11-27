@@ -124,6 +124,32 @@ struct RunRecord: Codable, Identifiable {
             && (report?["run_id"].string == id || report == nil && result["success"].bool != nil)
     }
 }
+
+enum RunHistoryPolicy {
+    static let defaultMaxCount = 50
+
+    static func trim(_ runs: [RunRecord], maxCount: Int = defaultMaxCount, server: String, username: String) -> [RunRecord] {
+        let limit = max(1, maxCount)
+        guard runs.count > limit else { return runs }
+        var keptCompleted = 0
+        var output: [RunRecord] = []
+        output.reserveCapacity(runs.count)
+        for record in runs {
+            let mustKeep = !record.finished || record.needsUpload(server: server, username: username)
+            if mustKeep {
+                output.append(record)
+            } else if keptCompleted < limit {
+                output.append(record)
+                keptCompleted += 1
+            }
+        }
+        return output
+    }
+
+    static func pollingIntervalSeconds(hasPendingRun: Bool, executorRunning: Bool, restoringSession: Bool) -> Int {
+        (hasPendingRun || executorRunning || restoringSession) ? 3 : 15
+    }
+}
 struct ExecutorStatus: Decodable {
     let running: Bool
     let run_id: String?
